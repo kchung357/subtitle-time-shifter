@@ -216,3 +216,19 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Subtitle files
+*.srt
+*.ass
+*.ssa
+*.vtt
+
+# Local folders
+input/
+output/
+subs/
+subtitles/
