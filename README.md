@@ -2,15 +2,17 @@
 
 A simple Python command-line tool for shifting SRT subtitle timestamps forward or backward.
 
-It reads an input `.srt` file, applies a positive or negative time offset to every subtitle timestamp, and writes the adjusted subtitles to a new output `.srt` file.
+It reads an `.srt` file, applies a time offset to every subtitle timestamp, and overwrites that file in place.
 
 ## Features
 
 - Shifts all SRT subtitle timestamps forward or backward
-- Supports positive and negative time offsets
+- Overwrites the subtitle file you pass in
+- Accepts short offsets such as `+2.5`, `-1:30`, and `+500ms`
+- Can compute the offset from when a sentence starts and when the subtitle appears
+- Asks for those two moments when you pass only the file
 - Preserves subtitle text and numbering
-- Writes the shifted subtitles to a new output file
-- Simple command-line interface
+- Clamps timestamps that would move before `00:00:00,000`
 - Uses only Python standard-library modules
 
 ## Requirements
@@ -24,7 +26,7 @@ No external Python packages are required.
 Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/subtitle-time-shifter.git
+git clone https://github.com/kchung357/subtitle-time-shifter.git
 cd subtitle-time-shifter
 ```
 
@@ -32,61 +34,76 @@ No package installation is required.
 
 ## Usage
 
-Run the script with an input subtitle file, an output subtitle file, and a time shift value:
-
 ```bash
-python shift_subtitles.py input.srt output.srt +/-HH:MM:SS:mmm
+python shift_subtitles.py FILE +2.5
+python shift_subtitles.py FILE -1:30
+python shift_subtitles.py FILE +500ms
+python shift_subtitles.py FILE 1:05.200 1:02.000
+python shift_subtitles.py FILE
+```
+
+The file is overwritten in place. There is no separate output path.
+
+With no times, the script asks:
+
+```text
+When does the sentence start?
+When does the subtitle start showing?
 ```
 
 ## Time Shift Format
 
-The time shift format is:
+One value shifts every cue by that amount. A bare number is seconds.
 
-```text
-+HH:MM:SS:mmm
-```
-
-or:
-
-```text
--HH:MM:SS:mmm
-```
-
-Where:
-
-| Part | Meaning |
+| Input | Meaning |
 |---|---|
-| `+` | Shift subtitles later |
-| `-` | Shift subtitles earlier |
-| `HH` | Hours |
-| `MM` | Minutes |
-| `SS` | Seconds |
-| `mmm` | Milliseconds |
+| `+2.5` | 2.5 seconds later |
+| `-0.25` | 0.25 seconds earlier |
+| `+1:30` | 1 minute 30 seconds later |
+| `+1:02:03.5` | 1 hour, 2 minutes, 3.5 seconds later |
+| `+500ms` | 500 milliseconds later |
+| `+1m2s` | 1 minute 2 seconds later |
+| `+1h` | 1 hour later |
+| `+00:00:02:500` | old `+HH:MM:SS:mmm` format, still accepted |
+
+`+` moves subtitles later. `-` moves them earlier.
+
+## Sync From Two Moments
+
+Pass the sentence time first and the current subtitle time second:
+
+```bash
+python shift_subtitles.py movie.srt 1:05.200 1:02.000
+```
+
+The shift is the sentence start minus the subtitle start. Every cue moves so the subtitle that appeared at `1:02.000` now appears at `1:05.200`.
+
+Absolute times can be written as seconds (`65.2`), minutes and seconds (`1:05.200`), or hours, minutes, and seconds (`1:02:03,500`).
 
 ## Examples
 
 Shift subtitles forward by 2.5 seconds:
 
 ```bash
-python shift_subtitles.py input.srt output.srt +00:00:02:500
+python shift_subtitles.py movie.srt +2.5
 ```
 
-Shift subtitles backward by 1 second:
+Shift subtitles backward by 1.5 seconds:
 
 ```bash
-python shift_subtitles.py input.srt output.srt -00:00:01:000
+python shift_subtitles.py movie.srt -1.5
 ```
 
-Shift subtitles forward by 1 minute:
+Shift subtitles forward by 1 minute 30 seconds:
 
 ```bash
-python shift_subtitles.py input.srt output.srt +00:01:00:000
+python shift_subtitles.py movie.srt +1:30
 ```
 
-Shift subtitles backward by 1 hour:
+Shift subtitles backward by 500 milliseconds:
 
 ```bash
-python shift_subtitles.py input.srt output.srt -01:00:00:000
+python shift_subtitles.py movie.srt -500ms
 ```
 
 ## Example
@@ -106,10 +123,10 @@ This is a subtitle.
 Command:
 
 ```bash
-python shift_subtitles.py input.srt output.srt +00:00:02:000
+python shift_subtitles.py movie.srt +2
 ```
 
-Output subtitle:
+The same file then contains:
 
 ```text
 1
@@ -121,19 +138,15 @@ Hello world.
 This is a subtitle.
 ```
 
+The script prints the shift it applied. Run the opposite offset to undo it. For this example, that is `-2`.
+
 ## Important Notes
 
 This script is intended for `.srt` subtitle files.
 
-Make sure a negative shift does not move subtitle timestamps before:
+The file you pass is replaced. The original bytes are read completely before that replacement happens.
 
-```text
-00:00:00,000
-```
-
-If subtitles are shifted too far backward, the output may contain invalid negative timing behavior.
-
-The script writes to a new output file and does not modify the original input file.
+A cue that would move before `00:00:00,000` is clamped to zero, and the script reports how many cues were clamped.
 
 ## Privacy Notice
 
